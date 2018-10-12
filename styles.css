@@ -21,8 +21,8 @@ html, body {
 
 .videos__local {
     position: absolute;
+    top: 20px;
     right: 20px;
-    bottom: 20px;
     width: 15%;
     border: 2px solid white;
     border-radius: 5px;
