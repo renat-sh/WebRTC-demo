@@ -2,7 +2,11 @@
   const servers = {
     iceServers: [
       {urls: 'stun:stun.l.google.com:19302'},
-      {urls: 'turn:test.medgreat.ru:3478'}
+      {
+        urls: 'turn:test.medgreat.ru:3478',
+        username: 'username1',
+		    credential: 'password1',
+      }
     ]
   };
   let localStream;
