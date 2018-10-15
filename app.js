@@ -1,5 +1,10 @@
 (() => {
-  const servers = {iceServers: [{url: 'stun:stun.l.google.com:19302'}]};
+  const servers = {
+    iceServers: [
+      {urls: 'stun:stun.l.google.com:19302'},
+      {urls: 'test.medgreat.ru:3478'}
+    ]
+  };
   let localStream;
   let pc1;
   let pc2;
