@@ -46,6 +46,7 @@
         pc1.setLocalDescription(desc);
         pc2.setRemoteDescription(desc);
         pc2.createAnswer().then(desc => {
+          console.log("createAnswer", desc);
           pc2.setLocalDescription(desc);
           pc1.setRemoteDescription(desc);
         });
