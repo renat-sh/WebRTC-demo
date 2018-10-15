@@ -42,6 +42,7 @@
         .getTracks()
         .forEach(track => pc1.addTrack(track, localStream));
       pc1.createOffer(offerOptions).then(desc => {
+        console.log("createOffer", desc);
         pc1.setLocalDescription(desc);
         pc2.setRemoteDescription(desc);
         pc2.createAnswer().then(desc => {
