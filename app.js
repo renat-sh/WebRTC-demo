@@ -19,6 +19,7 @@
 
   const onIceCandidate = (pc, event) => {
     if (!event.candidate) return;
+    console.log('onIceCandidate', event.candidate);
     pc.addIceCandidate(event.candidate).catch(err => console.log(err));
   };
 
