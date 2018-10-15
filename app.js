@@ -1,5 +1,5 @@
 (() => {
-  const servers = null;
+  const servers = {iceServers: [{url: 'stun:stun.l.google.com:19302'}]};
   let localStream;
   let pc1;
   let pc2;
@@ -8,27 +8,20 @@
   const localVideo = document.querySelector('.videos__local');
   const remoteVideo = document.querySelector('.videos__remote');
 
-  const getOtherPc = pc => (pc === pc1) ? pc2 : pc1;
-
-  const getName = pc => (pc === pc1) ? 'pc1' : 'pc2';
-
-  const onAddIceCandidateSuccess = pc => console.log(`${getName(pc)} addIceCandidate success`);
-
   const onIceCandidate = (pc, event) => {
-    console.log(event.candidate);
     if (!event.candidate) return;
-    getOtherPc(pc).addIceCandidate(event.candidate).then(onAddIceCandidateSuccess).catch(err => console.log(err));
-    // console.log(`${getName(pc)} ICE candidate:\n${event.candidate ? event.candidate.candidate : '(null)'}`);
+    pc.addIceCandidate(event.candidate).catch(err => console.log(err));
   };
 
   navigator.mediaDevices.getUserMedia(mediaStreamConstraints)
     .then(mediaStream => {
       localVideo.srcObject = mediaStream;
       localStream = mediaStream;
+
       pc1 = new RTCPeerConnection(servers);
-      pc1.onicecandidate = e => onIceCandidate(pc1, e);
       pc2 = new RTCPeerConnection(servers);
-      pc2.onicecandidate = e => onIceCandidate(pc2, e);
+      pc1.onicecandidate = e => onIceCandidate(pc2, e);
+      pc2.onicecandidate = e => onIceCandidate(pc1, e);
       pc2.ontrack = e => {
         if (remoteVideo.srcObject !== e.streams[0]) {
           remoteVideo.srcObject = e.streams[0];
