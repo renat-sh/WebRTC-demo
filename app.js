@@ -3,87 +3,110 @@
     iceServers: [
       { urls: "stun:stun.l.google.com:19302" },
       {
-        urls: "turn:test.medgreat.ru:3478",
-        username: "username1",
-        credential: "password1"
+        "urls": [
+          "turn:64.233.161.127:19305?transport=udp",
+          "turn:[2a00:1450:4010:c01::7f]:19305?transport=udp",
+          "turn:64.233.161.127:19305?transport=tcp",
+          "turn:[2a00:1450:4010:c01::7f]:19305?transport=tcp"
+        ],
+        "username": "CIvklt4FEgaszwDBVE8Yzc/s6OMTIICjBQ",
+        "credential": "rusm3Cy1+ujYSILxsB3I4jIxUYw=",
+        "maxRateKbps": "8000"
       }
     ]
   };
+
   const urlParams = new URLSearchParams(window.location.search);
-  let pc;
+  let pcg;
   let localStream;
   let signalServer;
 
   const createRTCPeerConnection = servers => {
     const remoteVideo = document.querySelector(".videos__remote");
-    const pc = new RTCPeerConnection(servers);
-    pc.onicecandidate = e => {
-      if (!e.candidate) return;
+    const pcl = new RTCPeerConnection(servers);
+    pcl.onicecandidate = e => {
       console.log("onIceCandidate", e.candidate);
+      if (!e.candidate) return;
       signalServer.send(
         JSON.stringify({
           type: "WEBRTC_SIGNAL",
-          data: {type: "icecandidate", candidate: e.candidate},
-          receiverUsername: urlParams.get("receiverUsername")
+          data: {
+            receiverUsername: urlParams.get("receiverUsername"),
+            signal: {type: "icecandidate", candidate: e.candidate}
+          }
         })
       );
     };
-    pc.ontrack = e => {
+    pcl.ontrack = e => {
       console.log("ontrack");
       if (remoteVideo.srcObject !== e.streams[0]) {
         remoteVideo.srcObject = e.streams[0];
       }
     };
-    return pc;
+    return pcl;
   };
 
   const createOffer = (signalServer, mediaStream) => {
     const offerOptions = { offerToReceiveAudio: 1, offerToReceiveVideo: 1 };
-    pc = createRTCPeerConnection(servers);
-    mediaStream.getTracks().forEach(track => pc.addTrack(track, mediaStream));
-    pc.createOffer(offerOptions).then(desc => {
-      console.log("createOffer", desc);
-      pc.setLocalDescription(desc);
+    pcg = createRTCPeerConnection(servers);
+    mediaStream.getTracks().forEach(track => pcg.addTrack(track, mediaStream));
+    let signal;
+    pcg.createOffer(offerOptions).then(offer => {
+      console.log("createOffer", offer);
+      signal = offer;
+      return pcg.setLocalDescription(offer);
+    }).then(() => {
       signalServer.send(
         JSON.stringify({
           type: "WEBRTC_SIGNAL",
-          data: desc,
-          receiverUsername: urlParams.get("receiverUsername")
+          data: {
+            receiverUsername: urlParams.get("receiverUsername"),
+            signal: signal
+          }
         })
       );
-    });
+    })
+    .catch(err => console.log(err));
   };
 
   const createAnswer = (signalServer, webrtcSignal) => {
-    pc = createRTCPeerConnection(servers);
-    localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
-    pc.setRemoteDescription(webrtcSignal).then(() =>
-      pc.createAnswer().then(desc => {
-        console.log("createAnswer", desc);
-        signalServer.send(
-          JSON.stringify({
-            type: "WEBRTC_SIGNAL",
-            data: desc,
-            receiverUsername: urlParams.get("receiverUsername")
-          })
-        );
-      })
-    );
+    pcg = createRTCPeerConnection(servers);
+    localStream.getTracks().forEach(track => pcg.addTrack(track, localStream));
+    let signal;
+    pcg.setRemoteDescription(new RTCSessionDescription(webrtcSignal)).then(() => {
+      return pcg.createAnswer();
+    })
+    .then(answer => {
+      console.log("createAnswer", answer);
+      signal = answer;
+      pcg.setLocalDescription(answer);
+    })
+    .then(() => {
+      signalServer.send(
+        JSON.stringify({
+          type: "WEBRTC_SIGNAL",
+          data: {
+            receiverUsername: urlParams.get("receiverUsername"),
+            signal: signal
+          }
+        })
+      );
+    })
   };
 
   const onMessage = e => {
     const reader = new FileReader();
     reader.onloadend = () => {
       const response = JSON.parse(reader.result);
-      const { receiverUsername, webrtcSignal } = response.data;
+      const { receiverUsername, signal } = response.data;
       if (receiverUsername === urlParams.get("receiverUsername")) return;
       console.log("onMessage", response);
-      if (webrtcSignal.type === "offer") {
-        createAnswer(e.target, webrtcSignal);
-      } else if (webrtcSignal.type === "answer") {
-        pc.setRemoteDescription(webrtcSignal);
-      } else if (webrtcSignal.type === "icecandidate") {
-        pc.addIceCandidate(new RTCIceCandidate(webrtcSignal.candidate));
+      if (signal.type === "offer") {
+        createAnswer(e.target, signal);
+      } else if (signal.type === "answer") {
+        pcg.setRemoteDescription(new RTCSessionDescription(signal));
+      } else if (signal.type === "icecandidate") {
+        pcg.addIceCandidate(new RTCIceCandidate(signal.candidate));
       }
     };
     reader.readAsText(e.data);
